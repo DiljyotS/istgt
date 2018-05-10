@@ -40,7 +40,7 @@ source   = istgt.c istgt_iscsi.c istgt_iscsi_param.c \
 	istgt_lu_ctl.c \
 	istgt_log.c istgt_conf.c istgt_sock.c istgt_misc.c \
 	istgt_queue.c istgt_crc32c.c istgt_md5.c replication.c replication_misc.c \
-	ring_mempool.c rte_ring.c
+	ring_mempool.c rte_ring.c replicate.c
 header   = istgt_ver.h istgt.h istgt_iscsi.h istgt_iscsi_xcopy.h istgt_iscsi_param.h \
 	istgt_scsi.h istgt_proto.h istgt_lu.h \
 	istgt_log.h istgt_conf.h istgt_sock.h \
@@ -58,11 +58,15 @@ ctl_header = istgt_ver.h istgt_conf.h istgt_log.h istgt_sock.h istgt_misc.h \
 replication_test_source   = replication_test.c replication_misc.c
 replication_test_header   = replication.h istgt_integration.h
 
+simulate_target_source   = simulate_target.c replicate.c
+simulate_target_header   = simulate_target.h istgt.h istgt_misc.h istgt_scsi.h replication.h ring_mempool.h
+
 mempool_test_source = rte_ring.c mempool_test.c ring_mempool.c
 
 ISTGT    = $(source:.c=.o)
 ISTGTCONTROL = $(ctl_source:.c=.o)
 REPLICATION_TEST = $(replication_test_source:.c=.o)
+SIMULATE_TARGET = $(simulate_target_source:.c=.o)
 MEMPOOL_TEST = $(mempool_test_source:.c=.o)
 
 PACKAGE_NAME = @PACKAGE_NAME@
@@ -108,6 +112,11 @@ replication_test: $(REPLICATION_TEST)
 	objcopy --only-keep-debug ${@}.full ${@}.debug
 	objcopy --strip-debug --add-gnu-debuglink=${@}.debug ${@}.full ${@}
 
+simulate_target: $(SIMULATE_TARGET)
+	$(CC) $(LDFLAGS) -o ${@}.full $(REPLICATION_TEST) $(LIBS)
+	objcopy --only-keep-debug ${@}.full ${@}.debug
+	objcopy --strip-debug --add-gnu-debuglink=${@}.debug ${@}.full ${@}
+
 mempool_test: $(MEMPOOL_TEST)
 	$(CC) $(LDFLAGS) -o ${@}.full $(MEMPOOL_TEST) $(LIBS)
 	objcopy --only-keep-debug ${@}.full ${@}.debug
@@ -116,8 +125,8 @@ mempool_test: $(MEMPOOL_TEST)
 build_image:
 	sh ./package.sh
 
-all: stamp-depend config.h $(SUBPROGRAM) istgtcontrol istgt replication_test mempool_test build_image
-dev: stamp-depend config.h $(SUBPROGRAM) istgtcontrol istgt replication_test mempool_test
+all: stamp-depend config.h $(SUBPROGRAM) istgtcontrol istgt replication_test simulate_target mempool_test build_image
+dev: stamp-depend config.h $(SUBPROGRAM) istgtcontrol istgt replication_test simulate_target mempool_test
 
 install: install-dirs
 	$(INSTALL) -m 0755 istgt $(DESTDIR)$(bindir)
@@ -150,6 +159,7 @@ clean:
 	-rm -f istgt.full istgtcontrol.full
 	-rm -f mempool_test
 	-rm -f replication_test replication_test.debug replication_test.full
+	-rm -f simulate_target simulate_target.debug simulate_target.full
 
 distclean: clean
 	-rm -f stamp-depend .depend
